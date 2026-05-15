@@ -1,4 +1,7 @@
-phase1-iam/
+P0/
+.github/
+|   |___ workflows
+|           |___ terraform.yml
 ├── main.tf
 ├── backend.tf
 ├── variables.tf
