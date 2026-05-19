@@ -32,6 +32,7 @@ terraform {
 }
 
 # Configure the AWS provider
+#
 provider "aws" {
   region = var.aws_region  # Region is set via variables (us-east-2)
 
