@@ -1,5 +1,5 @@
 # In VPC-Compute/main.tf
-data "terraform_remote_state" "phase1" {
+data "terraform_remote_state" "phase2" {
   backend = "s3"
   config = {
     bucket = "kakkad-tf-state"
