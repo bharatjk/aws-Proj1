@@ -3,7 +3,7 @@ data "terraform_remote_state" "phase1" {
   backend = "s3"
   config = {
     bucket = "kakkad-tf-state"
-    key    = "phase1/terraform.tfstate"
+    key    = "phase2/terraform.tfstate"
     region = "us-east-2"
   }
 }
