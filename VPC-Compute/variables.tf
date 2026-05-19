@@ -66,7 +66,7 @@ variable "availability_zone" {
 variable "my_ip" {
   description = "Your public IP address for SSH access (MUST be in CIDR format: x.x.x.x/32)"
   type        = string
-  default     = "104.148.209.220/32"  # ⚠️ CHANGE THIS! Find your IP with: curl ifconfig.me
+  default     = "104.148.209.220/32"
 }
 
 # ── NAT Gateway Toggle ─────────────────────────────────────────
