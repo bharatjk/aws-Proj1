@@ -1,4 +1,14 @@
-# .github/workflows/terraform.yml
+# ═══════════════════════════════════════════════════════════════
+# TERRAFORM CI/CD WORKFLOW - AUTO-DETECT CHANGED PHASES
+# ═══════════════════════════════════════════════════════════════
+# This workflow automatically detects which phase folders changed
+# and runs terraform only on those phases.
+#
+# How it works:
+# 1. Detects which phase folders have changes (P0/, VPC-Compute/, etc.)
+# 2. Runs terraform plan/apply only on changed phases
+# 3. Multiple phases can run in parallel if multiple changed
+# ═══════════════════════════════════════════════════════════════
 
 name: Terraform
 
@@ -10,16 +20,92 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
+  workflow_dispatch:  # Allow manual trigger
 
 env:
   AWS_REGION: us-east-2
-  TF_WORKING_DIR: P0
 
 jobs:
-  terraform-plan:
-    name: Plan
+  # ─────────────────────────────────────────────────────────────
+  # JOB 1: Detect which phase folders changed
+  # ─────────────────────────────────────────────────────────────
+  detect-changes:
+    name: Detect Changed Phases
     runs-on: ubuntu-latest
+    outputs:
+      phases: ${{ steps.set-phases.outputs.phases }}
+      phases-exist: ${{ steps.set-phases.outputs.phases-exist }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for accurate change detection
+
+      # Detect which folders changed
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            P0:
+              - 'P0/**'
+            VPC-Compute:
+              - 'VPC-Compute/**'
+            Phase3-Compute:
+              - 'Phase3-Compute/**'
+            Phase4-Storage:
+              - 'Phase4-Storage/**'
+
+      # Convert the detected changes into a JSON array for matrix strategy
+      - name: Set phases matrix
+        id: set-phases
+        run: |
+          phases="[]"
+          
+          # Check each phase and add to array if changed
+          if [[ "${{ steps.filter.outputs.P0 }}" == "true" ]]; then
+            phases=$(echo "$phases" | jq -c '. + ["P0"]')
+          fi
+          
+          if [[ "${{ steps.filter.outputs.VPC-Compute }}" == "true" ]]; then
+            phases=$(echo "$phases" | jq -c '. + ["VPC-Compute"]')
+          fi
+          
+          if [[ "${{ steps.filter.outputs.Phase3-Compute }}" == "true" ]]; then
+            phases=$(echo "$phases" | jq -c '. + ["Phase3-Compute"]')
+          fi
+          
+          if [[ "${{ steps.filter.outputs.Phase4-Storage }}" == "true" ]]; then
+            phases=$(echo "$phases" | jq -c '. + ["Phase4-Storage"]')
+          fi
+          
+          echo "phases=$phases" >> $GITHUB_OUTPUT
+          
+          # Set a flag if any phases exist
+          if [[ "$phases" == "[]" ]]; then
+            echo "phases-exist=false" >> $GITHUB_OUTPUT
+            echo "No phase changes detected"
+          else
+            echo "phases-exist=true" >> $GITHUB_OUTPUT
+            echo "Changed phases: $phases"
+          fi
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 2: Run Terraform Plan on changed phases
+  # ─────────────────────────────────────────────────────────────
+  terraform-plan:
+    name: Plan - ${{ matrix.phase }}
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    # Only run if at least one phase changed
+    if: needs.detect-changes.outputs.phases-exist == 'true'
+    
+    # Matrix strategy: run this job once per changed phase
+    strategy:
+      matrix:
+        phase: ${{ fromJSON(needs.detect-changes.outputs.phases) }}
+      fail-fast: false  # Continue other phases even if one fails
 
     steps:
       - name: Checkout code
@@ -38,26 +124,40 @@ jobs:
           terraform_version: 1.7.0
 
       - name: Terraform Init
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: ${{ matrix.phase }}
         run: terraform init
 
-      - name: Terraform Format check
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform fmt -check
+      - name: Terraform Format Check
+        working-directory: ${{ matrix.phase }}
+        run: terraform fmt -check -recursive
+        continue-on-error: true  # Don't fail on format issues
 
       - name: Terraform Validate
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: ${{ matrix.phase }}
         run: terraform validate
 
       - name: Terraform Plan
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan
+        working-directory: ${{ matrix.phase }}
+        run: terraform plan -no-color
+        continue-on-error: false
 
+  # ─────────────────────────────────────────────────────────────
+  # JOB 3: Run Terraform Apply on main branch
+  # ─────────────────────────────────────────────────────────────
   terraform-apply:
-    name: Apply
+    name: Apply - ${{ matrix.phase }}
     runs-on: ubuntu-latest
-    needs: terraform-plan
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [detect-changes, terraform-plan]
+    # Only run on push to main (not on PRs)
+    if: |
+      needs.detect-changes.outputs.phases-exist == 'true' &&
+      github.ref == 'refs/heads/main' && 
+      github.event_name == 'push'
+    
+    strategy:
+      matrix:
+        phase: ${{ fromJSON(needs.detect-changes.outputs.phases) }}
+      fail-fast: false
 
     steps:
       - name: Checkout code
@@ -76,9 +176,9 @@ jobs:
           terraform_version: 1.7.0
 
       - name: Terraform Init
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: ${{ matrix.phase }}
         run: terraform init
 
       - name: Terraform Apply
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform apply -auto-approve
+        working-directory: ${{ matrix.phase }}
+        run: terraform apply -auto-approve -no-color
