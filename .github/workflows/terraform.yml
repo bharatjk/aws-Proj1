@@ -65,19 +65,19 @@ jobs:
           
           # Check each phase and add to array if changed
           if [[ "${{ steps.filter.outputs.P0 }}" == "true" ]]; then
-            phases=$(echo "$phases" | jq '. + ["P0"]')
+            phases=$(echo "$phases" | jq -c '. + ["P0"]')
           fi
           
           if [[ "${{ steps.filter.outputs.VPC-Compute }}" == "true" ]]; then
-            phases=$(echo "$phases" | jq '. + ["VPC-Compute"]')
+            phases=$(echo "$phases" | jq -c '. + ["VPC-Compute"]')
           fi
           
           if [[ "${{ steps.filter.outputs.Phase3-Compute }}" == "true" ]]; then
-            phases=$(echo "$phases" | jq '. + ["Phase3-Compute"]')
+            phases=$(echo "$phases" | jq -c '. + ["Phase3-Compute"]')
           fi
           
           if [[ "${{ steps.filter.outputs.Phase4-Storage }}" == "true" ]]; then
-            phases=$(echo "$phases" | jq '. + ["Phase4-Storage"]')
+            phases=$(echo "$phases" | jq -c '. + ["Phase4-Storage"]')
           fi
           
           echo "phases=$phases" >> $GITHUB_OUTPUT
