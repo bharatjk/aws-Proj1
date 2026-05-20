@@ -1,8 +1,5 @@
 # In VPC-Compute/main.tf
 # Configure the AWS Provider
-provider "aws" {
-  region = var.aws_region
-}
 
 # Create the VPC using the variable
 resource "aws_vpc" "main" {
