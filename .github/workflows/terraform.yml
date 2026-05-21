@@ -143,9 +143,6 @@ jobs:
       needs.detect-changes.outputs.phases-exist == 'true' &&
       github.ref == 'refs/heads/main' && 
       github.event_name == 'push'
-      
-    
-
     environment:
       name: production
       
