@@ -77,3 +77,11 @@ variable "enable_nat_gateway" {
   type        = bool
   default     = false  # Set to true only when you need it
 }
+
+# ── VPC Flow Logs ──────────────────────────────────────────────
+# Free tier: first 10GB/month is free
+variable "enable_flow_logs" {
+  description = "Enable VPC Flow Logs for monitoring network traffic"
+  type        = bool
+  default     = true
+}
