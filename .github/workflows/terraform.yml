@@ -1,13 +1,11 @@
 # ═══════════════════════════════════════════════════════════════
-# TERRAFORM CI/CD WORKFLOW - AUTO-DETECT CHANGED PHASES
+# TERRAFORM CI/CD WORKFLOW - AUTO-DETECT + MANUAL APPROVAL
 # ═══════════════════════════════════════════════════════════════
-# This workflow automatically detects which phase folders changed
-# and runs terraform only on those phases.
-#
-# How it works:
-# 1. Detects which phase folders have changes (P0/, VPC-Compute/, etc.)
-# 2. Runs terraform plan/apply only on changed phases
-# 3. Multiple phases can run in parallel if multiple changed
+# Workflow:
+# 1. Detect which phase folders changed
+# 2. Run terraform plan on changed phases
+# 3. WAIT for manual approval
+# 4. Run terraform apply only after approval
 # ═══════════════════════════════════════════════════════════════
 
 name: Terraform
@@ -20,7 +18,7 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-2
@@ -40,9 +38,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history for accurate change detection
+          fetch-depth: 0
 
-      # Detect which folders changed
       - name: Detect changed paths
         uses: dorny/paths-filter@v3
         id: filter
@@ -57,13 +54,11 @@ jobs:
             Phase4-Storage:
               - 'Phase4-Storage/**'
 
-      # Convert the detected changes into a JSON array for matrix strategy
       - name: Set phases matrix
         id: set-phases
         run: |
           phases="[]"
           
-          # Check each phase and add to array if changed
           if [[ "${{ steps.filter.outputs.P0 }}" == "true" ]]; then
             phases=$(echo "$phases" | jq -c '. + ["P0"]')
           fi
@@ -82,7 +77,6 @@ jobs:
           
           echo "phases=$phases" >> $GITHUB_OUTPUT
           
-          # Set a flag if any phases exist
           if [[ "$phases" == "[]" ]]; then
             echo "phases-exist=false" >> $GITHUB_OUTPUT
             echo "No phase changes detected"
@@ -98,14 +92,12 @@ jobs:
     name: Plan - ${{ matrix.phase }}
     runs-on: ubuntu-latest
     needs: detect-changes
-    # Only run if at least one phase changed
     if: needs.detect-changes.outputs.phases-exist == 'true'
     
-    # Matrix strategy: run this job once per changed phase
     strategy:
       matrix:
         phase: ${{ fromJSON(needs.detect-changes.outputs.phases) }}
-      fail-fast: false  # Continue other phases even if one fails
+      fail-fast: false
 
     steps:
       - name: Checkout code
@@ -130,7 +122,7 @@ jobs:
       - name: Terraform Format Check
         working-directory: ${{ matrix.phase }}
         run: terraform fmt -check -recursive
-        continue-on-error: true  # Don't fail on format issues
+        continue-on-error: true
 
       - name: Terraform Validate
         working-directory: ${{ matrix.phase }}
@@ -139,16 +131,38 @@ jobs:
       - name: Terraform Plan
         working-directory: ${{ matrix.phase }}
         run: terraform plan -no-color
-        continue-on-error: false
 
   # ─────────────────────────────────────────────────────────────
-  # JOB 3: Run Terraform Apply on main branch
+  # JOB 3: Request manual approval before applying
   # ─────────────────────────────────────────────────────────────
-  terraform-apply:
-    name: Apply - ${{ matrix.phase }}
+  request-approval:
+    name: 🔒 Request Approval
     runs-on: ubuntu-latest
     needs: [detect-changes, terraform-plan]
-    # Only run on push to main (not on PRs)
+    if: |
+      needs.detect-changes.outputs.phases-exist == 'true' &&
+      github.ref == 'refs/heads/main' && 
+      github.event_name == 'push'
+    
+    environment:
+      name: production
+      
+    steps:
+      - name: ⏳ Waiting for manual approval
+        run: |
+          echo "This deployment is waiting for manual approval."
+          echo ""
+          echo "Go to: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo ""
+          echo "Then click 'Review deployments' to approve or reject."
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 4: Run Terraform Apply after approval
+  # ─────────────────────────────────────────────────────────────
+  terraform-apply:
+    name: ✅ Apply - ${{ matrix.phase }}
+    runs-on: ubuntu-latest
+    needs: [detect-changes, terraform-plan, request-approval]
     if: |
       needs.detect-changes.outputs.phases-exist == 'true' &&
       github.ref == 'refs/heads/main' && 
