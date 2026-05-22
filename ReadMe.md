@@ -16,7 +16,6 @@ aws-Proj1/                          ← Your Git repo root
 └── Phase4-Storage/                 ← Phase 4: S3, RDS (future)
     └── ...
 
-#
 # S3 Bucket — stores the actual state
 kakkad-tf-state/
 ├── phase1/terraform.tfstate    ← Phase 1 IAM state
