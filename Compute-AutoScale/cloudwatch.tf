@@ -121,13 +121,17 @@ resource "aws_cloudwatch_metric_alarm" "healthy_hosts" {
 # ---------------------------------------------------------------------------
 # CloudWatch Dashboard — one-stop view
 # ---------------------------------------------------------------------------
+resource "aws_cloudwatch_dashboard" "phase3" {
+  dashboard_name = "${var.tag_name}-Phase3"
 
-locals {
   dashboard_body = jsonencode({
     widgets = [
       {
         type   = "metric"
-        x = 0; y = 0; width = 12; height = 6
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
         properties = {
           title  = "ASG CPU Utilization"
           period = 60
@@ -146,7 +150,10 @@ locals {
       },
       {
         type   = "metric"
-        x = 12; y = 0; width = 12; height = 6
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
         properties = {
           title  = "ALB Request Count & 5xx Errors"
           period = 60
@@ -158,7 +165,10 @@ locals {
       },
       {
         type   = "metric"
-        x = 0; y = 6; width = 12; height = 6
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
         properties = {
           title  = "Healthy Host Count"
           period = 60
@@ -172,7 +182,10 @@ locals {
       },
       {
         type   = "metric"
-        x = 12; y = 6; width = 12; height = 6
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
         properties = {
           title  = "ALB Target Response Time (p99)"
           period = 60
@@ -185,8 +198,4 @@ locals {
       }
     ]
   })
-}
-resource "aws_cloudwatch_dashboard" "phase3" {
-  dashboard_name = "${var.tag_name}-Phase3"
-  dashboard_body = local.dashboard_body
 }
