@@ -49,10 +49,10 @@ jobs:
               - 'P0/**'
             VPC-Compute:
               - 'VPC-Compute/**'
-            Phase3-Compute:
-              - 'Phase3-Compute/**'
-            Phase4-Storage:
-              - 'Phase4-Storage/**'
+            Compute-AutoScale:
+              - 'Compute-AutoScale/**'
+            Storage:
+              - 'Storage/**'
 
       - name: Set phases matrix
         id: set-phases
@@ -67,12 +67,12 @@ jobs:
             phases=$(echo "$phases" | jq -c '. + ["VPC-Compute"]')
           fi
           
-          if [[ "${{ steps.filter.outputs.Phase3-Compute }}" == "true" ]]; then
-            phases=$(echo "$phases" | jq -c '. + ["Phase3-Compute"]')
+          if [[ "${{ steps.filter.outputs.Compute-AutoScale }}" == "true" ]]; then
+            phases=$(echo "$phases" | jq -c '. + ["Compute-AutoScale"]')
           fi
           
-          if [[ "${{ steps.filter.outputs.Phase4-Storage }}" == "true" ]]; then
-            phases=$(echo "$phases" | jq -c '. + ["Phase4-Storage"]')
+          if [[ "${{ steps.filter.outputs.Storage }}" == "true" ]]; then
+            phases=$(echo "$phases" | jq -c '. + ["Storage"]')
           fi
           
           echo "phases=$phases" >> $GITHUB_OUTPUT
