@@ -2,20 +2,18 @@
 # SNS Topic for alarm notifications (optional — only if email provided)
 # ---------------------------------------------------------------------------
 resource "aws_sns_topic" "alarms" {
-  count = var.alarm_email != "" ? 1 : 0
-  name  = "${var.tag_name}-alarms"
-  tags  = { Name = var.tag_name }
+  name = "${var.tag_name}-alarms"
+  tags = { Name = var.tag_name }
 }
 
 resource "aws_sns_topic_subscription" "email" {
-  count     = var.alarm_email != "" ? 1 : 0
-  topic_arn = aws_sns_topic.alarms[0].arn
+  topic_arn = aws_sns_topic.alarms.arn
   protocol  = "email"
-  endpoint  = var.alarm_email
+  endpoint  = data.aws_ssm_parameter.alarm_email.value
 }
 
 locals {
-  alarm_actions = var.alarm_email != "" ? [aws_sns_topic.alarms[0].arn] : []
+  alarm_actions = [aws_sns_topic.alarms.arn]
 }
 
 # ---------------------------------------------------------------------------

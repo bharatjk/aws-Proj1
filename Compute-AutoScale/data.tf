@@ -41,3 +41,12 @@ data "aws_ami" "amazon_linux_2023" {
 data "aws_ssm_parameter" "my_ip" {
   name = "/global/my_ip"
 }
+
+# ---------------------------------------------------------------------------
+# SSM Parameter Store — alarm notification email
+# Set once: aws ssm put-parameter --name "/global/alarm_email" \
+#   --value "you@example.com" --type "String" --region us-east-2
+# ---------------------------------------------------------------------------
+data "aws_ssm_parameter" "alarm_email" {
+  name = "/global/alarm_email"
+}

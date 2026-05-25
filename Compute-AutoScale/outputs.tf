@@ -44,6 +44,6 @@ output "cloudwatch_dashboard_url" {
 }
 
 output "sns_topic_arn" {
-  description = "SNS topic ARN for alarm notifications (empty if no email set)"
-  value       = var.alarm_email != "" ? aws_sns_topic.alarms[0].arn : "not created — set alarm_email variable"
+  description = "SNS topic ARN for alarm notifications"
+  value       = aws_sns_topic.alarms.arn
 }

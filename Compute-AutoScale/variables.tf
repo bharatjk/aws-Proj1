@@ -52,14 +52,6 @@ variable "cpu_scale_in_threshold" {
   default     = 30
 }
 
-# ── CloudWatch alarm notification ───────────────────────────────────────────
-
-variable "alarm_email" {
-  description = "Email address for CloudWatch alarm SNS notifications (leave empty to skip)"
-  type        = string
-  default     = ""
-}
-
 # ── Tags ─────────────────────────────────────────────────────────────────────
 
 variable "tag_name" {
