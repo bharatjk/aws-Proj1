@@ -8,9 +8,8 @@ resource "aws_lb" "web" {
   security_groups    = [aws_security_group.alb.id]
 
   # Deploy across both public subnets (one per AZ for HA)
-  subnets = data.terraform_remote_state.vpc.outputs.public_subnet_ids
-
-  enable_deletion_protection = false   # flip to true in production
+  subnets            = data.terraform_remote_state.vpc.outputs.public_subnet_ids  # Single subnet, accept AWS warning
+  enable_deletion_protection = false  # flip to true in production
 
   tags = { Name = var.tag_name }
 }
