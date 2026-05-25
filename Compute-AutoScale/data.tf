@@ -5,7 +5,7 @@ data "terraform_remote_state" "vpc" {
   backend = "s3"
   config = {
     bucket = "kakkad-tf-state"
-    key    = "VPC-Compute/terraform.tfstate"
+    key    = "phase2/terraform.tfstate"
     region = "us-east-2"
   }
 }
