@@ -13,6 +13,19 @@ resource "aws_subnet" "public" {
   }
 }
 
+# Second public subnet - different AZ
+resource "aws_subnet" "public2" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.3.0/24"  # Different CIDR
+  availability_zone       = "us-east-2b"   # Different AZ (yours is likely us-east-2a)
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "Tag-BK"
+    Type = "Public"
+  }
+}
+
 # Private subnet - internal only
 resource "aws_subnet" "private" {
   vpc_id                  = aws_vpc.main.id
