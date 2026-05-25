@@ -17,7 +17,7 @@ resource "aws_nat_gateway" "main" {
   count = var.enable_nat_gateway ? 1 : 0
 
   allocation_id = aws_eip.nat[0].id
-  subnet_id     = aws_subnet.public.id
+  subnet_id     = aws_subnet.public1.id
 
   tags = {
     Name = "Tag-BK"
