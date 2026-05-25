@@ -1,9 +1,9 @@
 # VPC-Compute/nacls.tf
 
-# Public subnet NACL
+# Public subnets NACL
 resource "aws_network_acl" "public" {
   vpc_id     = aws_vpc.main.id
-  subnet_ids = [aws_subnet.public.id]
+  subnet_ids = [aws_subnet.public1.id, aws_subnet.public2.id]
 
   ingress {
     protocol   = "tcp"
@@ -55,10 +55,10 @@ resource "aws_network_acl" "public" {
   }
 }
 
-# Private subnet NACL
+# Private subnets NACL
 resource "aws_network_acl" "private" {
   vpc_id     = aws_vpc.main.id
-  subnet_ids = [aws_subnet.private.id]
+  subnet_ids = [aws_subnet.private1.id, aws_subnet.private2.id]
 
   ingress {
     protocol   = "-1"
