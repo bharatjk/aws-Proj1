@@ -32,3 +32,12 @@ data "aws_ami" "amazon_linux_2023" {
     values = ["available"]
   }
 }
+
+# ---------------------------------------------------------------------------
+# SSM Parameter Store — global operator IP
+# Set once: aws ssm put-parameter --name "/global/my_ip" \
+#   --value "$(curl -s ifconfig.me)/32" --type "String" --region us-east-2
+# ---------------------------------------------------------------------------
+data "aws_ssm_parameter" "my_ip" {
+  name = "/global/my_ip"
+}

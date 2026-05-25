@@ -38,7 +38,7 @@ resource "aws_security_group" "alb" {
 # ---------------------------------------------------------------------------
 resource "aws_security_group" "ec2" {
   name        = "${var.tag_name}-ec2-sg"
-  description = "Allow HTTP from ALB only; SSH from my IP"
+  description = "Allow HTTP from ALB only; SSH from /global/my_ip SSM parameter"
   vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
 
   # nginx traffic — only from ALB SG
@@ -50,13 +50,13 @@ resource "aws_security_group" "ec2" {
     security_groups = [aws_security_group.alb.id]
   }
 
-  # SSH — only from operator IP
+  # SSH — IP pulled from SSM /global/my_ip
   ingress {
-    description = "SSH from my IP"
+    description = "SSH from operator IP (SSM /global/my_ip)"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.my_ip]
+    cidr_blocks = [data.aws_ssm_parameter.my_ip.value]
   }
 
   egress {

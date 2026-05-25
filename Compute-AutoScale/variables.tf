@@ -4,11 +4,6 @@ variable "aws_region" {
   default     = "us-east-2"
 }
 
-variable "my_ip" {
-  description = "Your public IP in CIDR format (x.x.x.x/32) for SSH access"
-  type        = string
-}
-
 # ── Instance ────────────────────────────────────────────────────────────────
 
 variable "instance_type" {
