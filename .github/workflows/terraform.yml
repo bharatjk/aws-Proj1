@@ -49,10 +49,10 @@ jobs:
               - 'P0/**'
             VPC-Compute:
               - 'VPC-Compute/**'
-            Phase3-Compute:
-              - 'Phase3-Compute/**'
-            Phase4-Storage:
-              - 'Phase4-Storage/**'
+            Compute-AutoScale:
+              - 'Compute-AutoScale/**'
+            Storage:
+              - 'Storage/**'
 
       - name: Set phases matrix
         id: set-phases
@@ -67,12 +67,12 @@ jobs:
             phases=$(echo "$phases" | jq -c '. + ["VPC-Compute"]')
           fi
           
-          if [[ "${{ steps.filter.outputs.Phase3-Compute }}" == "true" ]]; then
-            phases=$(echo "$phases" | jq -c '. + ["Phase3-Compute"]')
+          if [[ "${{ steps.filter.outputs.Compute-AutoScale }}" == "true" ]]; then
+            phases=$(echo "$phases" | jq -c '. + ["Compute-AutoScale"]')
           fi
           
-          if [[ "${{ steps.filter.outputs.Phase4-Storage }}" == "true" ]]; then
-            phases=$(echo "$phases" | jq -c '. + ["Phase4-Storage"]')
+          if [[ "${{ steps.filter.outputs.Storage }}" == "true" ]]; then
+            phases=$(echo "$phases" | jq -c '. + ["Storage"]')
           fi
           
           echo "phases=$phases" >> $GITHUB_OUTPUT
@@ -130,7 +130,17 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ matrix.phase }}
-        run: terraform plan -no-color
+        run: terraform plan -no-color 2>&1 | tee plan_output.txt
+        continue-on-error: true
+
+      - name: Show Full Plan Output
+        if: always()
+        working-directory: ${{ matrix.phase }}
+        run: cat plan_output.txt
+
+      - name: Fail if Plan Failed
+        working-directory: ${{ matrix.phase }}
+        run: grep -q "Error:" plan_output.txt && exit 1 || exit 0
 
   # ─────────────────────────────────────────────────────────────
   # JOB 3: Request manual approval before applying
@@ -195,3 +205,14 @@ jobs:
       - name: Terraform Apply
         working-directory: ${{ matrix.phase }}
         run: terraform apply -auto-approve -no-color
+
+      - name: Release Terraform Lock on failure
+        if: failure() || cancelled()
+        working-directory: ${{ matrix.phase }}
+        run: |
+          LOCK_ID=$(terraform show -json 2>/dev/null | jq -r '.values // empty' || true)
+          terraform force-unlock -force $( aws dynamodb scan \
+            --table-name tf-state-lock \
+            --region us-east-2 \
+            --query "Items[?contains(LockID.S, '${GITHUB_WORKFLOW}')].LockID.S" \
+            --output text ) || true
