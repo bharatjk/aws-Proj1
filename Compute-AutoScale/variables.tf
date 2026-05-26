@@ -12,6 +12,7 @@ variable "instance_type" {
   default     = "t3.micro"   # free-tier eligible
 }
 
+#We have not created a key pair yet
 variable "key_pair_name" {
   description = "Name of an existing EC2 key pair for SSH access (leave empty to skip)"
   type        = string
