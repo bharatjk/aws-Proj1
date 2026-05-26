@@ -1,11 +1,11 @@
 output "alb_dns_name" {
   description = "DNS name of the Application Load Balancer — open in browser to verify nginx"
-  value       = aws_lb.web.dns_name
+  value       = try(aws_lb.web[0].dns_name, null)
 }
 
 output "alb_arn" {
   description = "ARN of the ALB"
-  value       = aws_lb.web.arn
+  value       = try(aws_lb.web[0].arn, null)
 }
 
 output "asg_name" {

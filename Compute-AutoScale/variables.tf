@@ -4,6 +4,12 @@ variable "aws_region" {
   default     = "us-east-2"
 }
 
+# Control whether to create the ALB or not (useful for testing and cleanup)
+variable "enable_alb" {
+  type    = bool
+  default = true # Set to false when you want to destroy it
+}
+
 # ── Instance ────────────────────────────────────────────────────────────────
 
 variable "instance_type" {
