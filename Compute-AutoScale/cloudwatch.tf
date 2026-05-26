@@ -132,6 +132,7 @@ resource "aws_cloudwatch_dashboard" "phase3" {
         height = 6
         properties = {
           title  = "ASG CPU Utilization"
+          region = var.aws_region
           period = 60
           stat   = "Average"
           metrics = [[
@@ -154,7 +155,9 @@ resource "aws_cloudwatch_dashboard" "phase3" {
         height = 6
         properties = {
           title  = "ALB Request Count & 5xx Errors"
+          region = var.aws_region
           period = 60
+          stat   = "Sum"
           metrics = [
             ["AWS/ApplicationELB", "RequestCount",         "LoadBalancer", aws_lb.web.arn_suffix, { stat = "Sum",     label = "Requests" }],
             ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count","LoadBalancer", aws_lb.web.arn_suffix, { stat = "Sum",     label = "5xx Errors" }]
@@ -169,6 +172,7 @@ resource "aws_cloudwatch_dashboard" "phase3" {
         height = 6
         properties = {
           title  = "Healthy Host Count"
+          region = var.aws_region
           period = 60
           stat   = "Minimum"
           metrics = [[
@@ -186,6 +190,7 @@ resource "aws_cloudwatch_dashboard" "phase3" {
         height = 6
         properties = {
           title  = "ALB Target Response Time (p99)"
+          region = var.aws_region
           period = 60
           stat   = "p99"
           metrics = [[
