@@ -71,6 +71,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
 # ALB 5xx error rate alarm — catches app/infra errors
 # ---------------------------------------------------------------------------
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
+  count               = var.enable_alb ? 1 : 0
   alarm_name          = "${var.tag_name}-alb-5xx"
   alarm_description   = "ALB is returning 5xx errors"
   namespace           = "AWS/ApplicationELB"
@@ -83,7 +84,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = aws_lb.web.arn_suffix
+    LoadBalancer = aws_lb.web[0].arn_suffix
   }
 
   alarm_actions = local.alarm_actions
@@ -95,6 +96,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
 # ALB healthy host count — fires when ALL instances are unhealthy
 # ---------------------------------------------------------------------------
 resource "aws_cloudwatch_metric_alarm" "healthy_hosts" {
+  count               = var.enable_alb ? 1 : 0
   alarm_name          = "${var.tag_name}-healthy-hosts"
   alarm_description   = "No healthy instances behind the ALB!"
   namespace           = "AWS/ApplicationELB"
@@ -108,7 +110,7 @@ resource "aws_cloudwatch_metric_alarm" "healthy_hosts" {
 
   dimensions = {
     TargetGroup  = aws_lb_target_group.web.arn_suffix
-    LoadBalancer = aws_lb.web.arn_suffix
+    LoadBalancer = aws_lb.web[0].arn_suffix
   }
 
   alarm_actions = local.alarm_actions
@@ -159,8 +161,8 @@ resource "aws_cloudwatch_dashboard" "phase3" {
           period = 60
           stat   = "Sum"
           metrics = [
-            ["AWS/ApplicationELB", "RequestCount",         "LoadBalancer", aws_lb.web.arn_suffix, { stat = "Sum",     label = "Requests" }],
-            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count","LoadBalancer", aws_lb.web.arn_suffix, { stat = "Sum",     label = "5xx Errors" }]
+            ["AWS/ApplicationELB", "RequestCount",         "LoadBalancer", var.enable_alb ? aws_lb.web[0].arn_suffix : "no-active-alb", { stat = "Sum",     label = "Requests" }],
+            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count","LoadBalancer", var.enable_alb ? aws_lb.web[0].arn_suffix : "no-active-alb", { stat = "Sum",     label = "5xx Errors" }]
           ]
         }
       },
@@ -178,7 +180,7 @@ resource "aws_cloudwatch_dashboard" "phase3" {
           metrics = [[
             "AWS/ApplicationELB", "HealthyHostCount",
             "TargetGroup",  aws_lb_target_group.web.arn_suffix,
-            "LoadBalancer", aws_lb.web.arn_suffix
+            "LoadBalancer", var.enable_alb ? aws_lb.web[0].arn_suffix : "no-active-alb"
           ]]
         }
       },
@@ -195,7 +197,7 @@ resource "aws_cloudwatch_dashboard" "phase3" {
           stat   = "p99"
           metrics = [[
             "AWS/ApplicationELB", "TargetResponseTime",
-            "LoadBalancer", aws_lb.web.arn_suffix
+            "LoadBalancer", var.enable_alb ? aws_lb.web[0].arn_suffix : "no-active-alb" 
           ]]
         }
       }

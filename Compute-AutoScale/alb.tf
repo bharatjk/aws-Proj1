@@ -48,8 +48,12 @@ resource "aws_lb_target_group" "web" {
 # ---------------------------------------------------------------------------
 # Listener — HTTP:80 → forward to target group
 # ---------------------------------------------------------------------------
+
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.web.arn
+  # Add this line so the listener is destroyed when the ALB is disabled
+  count             = var.enable_alb ? 1 : 0
+  # Change from aws_lb.web.arn to using the index [0]
+  load_balancer_arn = aws_lb.web[0].arn
   port              = 80
   protocol          = "HTTP"
 
