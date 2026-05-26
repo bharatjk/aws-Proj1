@@ -2,6 +2,12 @@
 # Application Load Balancer
 # ---------------------------------------------------------------------------
 resource "aws_lb" "web" {
+  
+  # This acts as the On/Off switch
+  # To Pause Charges: Run terraform apply -var="enable_alb=false"
+  # To Resume Testing: Run terraform apply -var="enable_alb=true"
+  count              = var.enable_alb ? 1 : 0 
+
   name               = "${var.tag_name}-alb"
   internal           = false
   load_balancer_type = "application"

@@ -14,7 +14,7 @@ resource "aws_launch_template" "web" {
   }
 
   network_interfaces {
-    associate_public_ip_address = true   # public subnet → direct SSH possible
+    associate_public_ip_address = false   # private subnet → direct SSH not possible
     security_groups             = [aws_security_group.ec2.id]
   }
 
@@ -27,16 +27,58 @@ resource "aws_launch_template" "web" {
 
     # Write a simple branded index page
     cat > /usr/share/nginx/html/index.html <<HTML
-    <!DOCTYPE html>
-    <html>
-      <head><title>Phase 3 — Tag-BK</title></head>
-      <body style="font-family:sans-serif;text-align:center;padding:60px">
-        <h1>&#x2705; Phase 3 Running</h1>
-        <p>Instance ID: <strong>$(curl -s http://169.254.169.254/latest/meta-data/instance-id)</strong></p>
-        <p>AZ: <strong>$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)</strong></p>
-      </body>
-    </html>
-    HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ALB Routing Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+        .box { border: 2px solid #0275d8; padding: 20px; display: inline-block; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #0275d8; }
+        .data { font-size: 1.2em; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>ALB Test Page</h1>
+        
+        <?php
+        // 1. Request an IMDSv2 Secure Token (Valid for 60 seconds)
+        $token_options = [
+            'http' => [
+                'method' => 'PUT',
+                'header' => 'X-aws-ec2-metadata-token-ttl-seconds: 60'
+            ]
+        ];
+        $token_context = stream_context_create($token_options);
+        $token = @file_get_contents('http://169.254.169', false, $token_context);
+
+        if ($token) {
+            // 2. Setup the header to use the retrieved token
+            $data_options = [
+                'http' => [
+                    'method' => 'GET',
+                    'header' => "X-aws-ec2-metadata-token: $token"
+                ]
+            ];
+            $data_context = stream_context_create($data_options);
+
+            // 3. Fetch the secure AWS Metadata
+            $instance_id = @file_get_contents('http://169.254.169.254/latest/meta-data/instance-id', false, $data_context);
+            $az = @file_get_contents('http://169.254.169', false, $data_context);
+            
+            echo "<p class='data'><strong>Instance ID:</strong> " . htmlspecialchars($instance_id) . "</p>";
+            echo "<p class='data'><strong>Availability Zone:</strong> " . htmlspecialchars($az) . "</p>";
+        } else {
+            // Fallback display if token fetching fails entirely
+            echo "<p style='color: red;'><strong>Error:</strong> Unable to communicate with AWS IMDSv2.</p>";
+            echo "<p><strong>Server Hostname:</strong> " . gethostname() . "</p>";
+        }
+        ?>
+    </div>
+</body>
+</html>
+HTML
 
     systemctl enable nginx
     systemctl start nginx

@@ -8,8 +8,9 @@ resource "aws_autoscaling_group" "web" {
   max_size         = var.asg_max_size
   desired_capacity = var.asg_desired_capacity
 
-  # Spread instances across public subnets (one per AZ)
-  vpc_zone_identifier = data.terraform_remote_state.vpc.outputs.public_subnet_ids
+  # Spread instances across private subnets (one per AZ)
+
+  vpc_zone_identifier = data.terraform_remote_state.vpc.outputs.private_subnet_ids
 
   # Register with ALB target group
   target_group_arns = [aws_lb_target_group.web.arn]
