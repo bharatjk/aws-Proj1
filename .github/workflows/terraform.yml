@@ -210,9 +210,22 @@ jobs:
         if: failure() || cancelled()
         working-directory: ${{ matrix.phase }}
         run: |
-          LOCK_ID=$(terraform show -json 2>/dev/null | jq -r '.values // empty' || true)
-          terraform force-unlock -force $( aws dynamodb scan \
-            --table-name tf-state-lock \
-            --region us-east-2 \
-            --query "Items[?contains(LockID.S, '${GITHUB_WORKFLOW}')].LockID.S" \
-            --output text ) || true
+          # 1. Try to get Lock ID using modern terraform metadata first
+          LOCK_ID=$(terraform show -json 2>/dev/null | jq -r '.lock.id // empty' || true)
+          
+          # 2. If metadata failed, fall back to scanning DynamoDB dynamically
+          if [ -z "$LOCK_ID" ]; then
+            LOCK_ID=$(aws dynamodb scan \
+              --table-name tf-state-lock \
+              --region us-east-2 \
+              --query "Items[?contains(LockID.S, '${{ github.workflow }}')].LockID.S" \
+              --output text 2>/dev/null || true)
+          fi
+
+          # 3. Only run unlock if a non-empty Lock ID was successfully found
+          if [ -n "$LOCK_ID" ] && [ "$LOCK_ID" != "None" ]; then
+            echo "Found active Lock ID: $LOCK_ID. Proceeding to force unlock."
+            terraform force-unlock -force "$LOCK_ID"
+          else
+            echo "No active lock ID found in state or DynamoDB table. Skipping unlock."
+          fi
