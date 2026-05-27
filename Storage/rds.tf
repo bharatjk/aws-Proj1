@@ -73,7 +73,7 @@ resource "aws_db_instance" "mysql" {
 
   # Backups — automated daily snapshots sent to S3 backup bucket lifecycle
   backup_retention_period = var.db_backup_retention_days
-  backup_window           = "03:00-04:00"   # UTC — low traffic window
+  backup_window           = "03:00-04:00" # UTC — low traffic window
   maintenance_window      = "Mon:04:00-Mon:05:00"
 
   # Snapshots
@@ -82,10 +82,10 @@ resource "aws_db_instance" "mysql" {
   copy_tags_to_snapshot     = true
 
   # Performance
-  performance_insights_enabled = false   # costs extra — disable for lab
+  performance_insights_enabled = false # costs extra — disable for lab
 
   # Prevent accidental destruction via Terraform
-  deletion_protection = false   # flip to true in production
+  deletion_protection = false # flip to true in production
 
   tags = { Name = var.tag_name }
 }

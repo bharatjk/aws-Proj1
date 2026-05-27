@@ -1,11 +1,11 @@
 output "efs_id" {
   description = "EFS filesystem ID — used in launch template for auto-mount"
-  value       = try(aws_efs_file_system.main[0].id, null) #this checks if the EFS file system exists before trying to access its ID, preventing errors if it doesn't exist
+  value       = try(aws_efs_file_system.main[0].id, null)
 }
 
 output "efs_dns_name" {
   description = "EFS DNS name for manual mount commands"
-  value       = try(aws_efs_file_system.main[0].dns_name, null) 
+  value       = try(aws_efs_file_system.main[0].dns_name, null)
 }
 
 output "rds_endpoint" {
