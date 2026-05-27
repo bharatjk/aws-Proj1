@@ -18,14 +18,49 @@ resource "aws_launch_template" "web" {
     security_groups             = [aws_security_group.ec2.id]
   }
 
-  # Install nginx and serve a simple health-check page
+  # Install nginx + EFS utils, mount EFS, serve instance metadata page
   user_data = base64encode(<<-EOF
     #!/bin/bash
     set -e
     dnf update -y
-    dnf install -y nginx
+    dnf install -y nginx amazon-efs-utils
 
-    # Write a simple branded index page
+    # ── EFS Auto-Mount ──────────────────────────────────────────────────────
+    # HOW IT WORKS:
+    # 1. Phase 4 creates the EFS filesystem and stores its ID in SSM at /global/efs_id
+    # 2. Every new ASG instance runs this script on boot via user_data
+    # 3. We read the EFS ID from SSM, create the mount point, and mount via NFS
+    # 4. The /etc/fstab entry ensures EFS remounts automatically after reboot
+    # 5. All ASG instances share the same EFS — files written by one instance
+    #    are immediately visible to all others (shared persistent storage)
+    # ────────────────────────────────────────────────────────────────────────
+    EFS_ID=$(aws ssm get-parameter --name "/global/efs_id" --region ${var.aws_region} --query "Parameter.Value" --output text 2>/dev/null || echo "")
+
+    if [ -n "$EFS_ID" ]; then
+      mkdir -p /mnt/efs
+      # Mount using amazon-efs-utils (handles TLS + automatic AZ-local mount target selection)
+      mount -t efs -o tls $EFS_ID:/ /mnt/efs
+      # Persist mount across reboots
+      echo "$EFS_ID:/ /mnt/efs efs _netdev,tls 0 0" >> /etc/fstab
+    fi
+
+    # ── IMDSv2 Metadata fetch (bash + curl) ─────────────────────────────────
+    # Get IMDSv2 token first (required — IMDSv1 disabled by default on AL2023)
+    TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
+      -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+
+    INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+      http://169.254.169.254/latest/meta-data/instance-id)
+
+    AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+      http://169.254.169.254/latest/meta-data/placement/availability-zone)
+
+    EFS_STATUS="Not mounted"
+    if mountpoint -q /mnt/efs; then
+      EFS_STATUS="Mounted ($EFS_ID)"
+    fi
+
+    # ── Write nginx index page ───────────────────────────────────────────────
     cat > /usr/share/nginx/html/index.html <<HTML
 <!DOCTYPE html>
 <html>
@@ -41,40 +76,9 @@ resource "aws_launch_template" "web" {
 <body>
     <div class="box">
         <h1>ALB Test Page</h1>
-        
-        <?php
-        // 1. Request an IMDSv2 Secure Token (Valid for 60 seconds)
-        $token_options = [
-            'http' => [
-                'method' => 'PUT',
-                'header' => 'X-aws-ec2-metadata-token-ttl-seconds: 60'
-            ]
-        ];
-        $token_context = stream_context_create($token_options);
-        $token = @file_get_contents('http://169.254.169', false, $token_context);
-
-        if ($token) {
-            // 2. Setup the header to use the retrieved token
-            $data_options = [
-                'http' => [
-                    'method' => 'GET',
-                    'header' => "X-aws-ec2-metadata-token: $token"
-                ]
-            ];
-            $data_context = stream_context_create($data_options);
-
-            // 3. Fetch the secure AWS Metadata
-            $instance_id = @file_get_contents('http://169.254.169.254/latest/meta-data/instance-id', false, $data_context);
-            $az = @file_get_contents('http://169.254.169', false, $data_context);
-            
-            echo "<p class='data'><strong>Instance ID:</strong> " . htmlspecialchars($instance_id) . "</p>";
-            echo "<p class='data'><strong>Availability Zone:</strong> " . htmlspecialchars($az) . "</p>";
-        } else {
-            // Fallback display if token fetching fails entirely
-            echo "<p style='color: red;'><strong>Error:</strong> Unable to communicate with AWS IMDSv2.</p>";
-            echo "<p><strong>Server Hostname:</strong> " . gethostname() . "</p>";
-        }
-        ?>
+        <p class="data"><strong>Instance ID:</strong> $INSTANCE_ID</p>
+        <p class="data"><strong>Availability Zone:</strong> $AZ</p>
+        <p class="data"><strong>EFS Status:</strong> $EFS_STATUS</p>
     </div>
 </body>
 </html>
